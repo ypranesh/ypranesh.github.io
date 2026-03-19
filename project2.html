@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Superstore Sales Dashboard — Tableau Project</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --accent: #e8ff6b;
+    --accent2: #6bffd0;
+    --accent3: #ff6b9d;
+    --text: #e8e8f0;
+    --muted: #7a7a9a;
+    --red: #ff4d6d;
+    --yellow: #ffd93d;
+    --green: #6bffd0;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Space Mono', monospace;
+    overflow-x: hidden; cursor: none;
+  }
+  .cursor {
+    width: 12px; height: 12px; background: var(--accent);
+    border-radius: 50%; position: fixed; pointer-events: none; z-index: 9999;
+    transform: translate(-50%,-50%);
+    transition: transform .1s, width .2s, height .2s;
+    mix-blend-mode: difference;
+  }
+  .cursor.expand { width: 40px; height: 40px; }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    opacity: 0.4;
+  }
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 1.2rem 3rem;
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(10,10,15,0.85); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: .85rem;
+    letter-spacing: .2em; text-transform: uppercase;
+    color: var(--accent); text-decoration: none;
+  }
+  .nav-links { display: flex; gap: 2rem; }
+  .nav-links a {
+    font-size: .75rem; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--muted); text-decoration: none; transition: color .2s;
+  }
+  .nav-links a:hover { color: var(--accent); }
+
+  #hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    justify-content: center; padding: 8rem 3rem 4rem;
+    position: relative; overflow: hidden;
+  }
+  .hero-bg-circle {
+    position: absolute; right: -10%; top: 40%; width: 70vmin; height: 70vmin;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(107,255,208,0.05) 0%, transparent 70%);
+    transform: translateY(-50%); pointer-events: none;
+  }
+  .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; max-width: 1200px; }
+  .hero-eyebrow {
+    font-size: .75rem; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: .8rem;
+  }
+  .hero-eyebrow::before { content: ''; display: block; width: 2.5rem; height: 1px; background: var(--accent); }
+  .hero-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    line-height: 1.05; font-weight: 400; margin-bottom: 1.5rem;
+  }
+  .hero-title em { font-style: italic; color: var(--accent2); }
+  .hero-subtitle { color: var(--muted); font-size: .9rem; line-height: 1.7; max-width: 480px; margin-bottom: 2.5rem; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 2.5rem; }
+  .tag {
+    padding: .35rem .9rem; border: 1px solid var(--border);
+    border-radius: 2rem; font-size: .7rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); transition: all .2s;
+  }
+  .tag:hover { border-color: var(--accent); color: var(--accent); }
+  .hero-cta { display: flex; gap: 1rem; }
+  .btn-primary {
+    padding: .9rem 2rem; font-family: 'Space Mono', monospace;
+    font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+    background: var(--accent); color: var(--bg); border: none; cursor: none;
+    font-weight: 700; transition: transform .2s, box-shadow .2s;
+    text-decoration: none; display: inline-block;
+  }
+  .btn-primary:hover { transform: translate(-2px,-2px); box-shadow: 4px 4px 0 var(--accent2); }
+  .btn-ghost {
+    padding: .9rem 2rem; font-family: 'Space Mono', monospace;
+    font-size: .75rem; letter-spacing: .1em; text-transform: uppercase;
+    background: transparent; color: var(--text); border: 1px solid var(--border);
+    cursor: none; transition: all .2s; text-decoration: none; display: inline-block;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .hero-stats {
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 2.5rem; position: relative;
+  }
+  .hero-stats::before {
+    content: 'dataset overview'; position: absolute; top: -1px; left: 2rem;
+    font-size: .65rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--accent); background: var(--surface); padding: 0 .5rem; transform: translateY(-50%);
+  }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .stat-item { padding: 1rem; border-left: 2px solid var(--border); }
+  .stat-item.active { border-left-color: var(--accent); }
+  .stat-num { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.8rem; color: var(--accent); }
+  .stat-label { font-size: .7rem; color: var(--muted); margin-top: .25rem; letter-spacing: .05em; }
+
+  section { position: relative; z-index: 1; }
+  .section-wrap { max-width: 1200px; margin: 0 auto; padding: 6rem 3rem; }
+  .section-label {
+    font-size: .7rem; letter-spacing: .3em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: .8rem;
+    display: flex; align-items: center; gap: .8rem;
+  }
+  .section-label::before { content: ''; width: 1.5rem; height: 1px; background: var(--accent); }
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(1.8rem, 3.5vw, 3rem);
+    font-weight: 400; line-height: 1.15; margin-bottom: 1.5rem;
+  }
+
+  /* PROBLEM */
+  #problem { background: var(--surface); }
+  .problem-body { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; margin-top: 3rem; }
+  .problem-quote {
+    font-family: 'Instrument Serif', serif; font-size: 1.5rem; font-style: italic;
+    line-height: 1.5; color: var(--text); padding-left: 1.5rem;
+    border-left: 3px solid var(--accent);
+  }
+  .problem-quote strong { color: var(--accent); font-style: normal; font-weight: 400; }
+  .problem-bullets { display: flex; flex-direction: column; gap: 1rem; }
+  .problem-bullet {
+    display: flex; gap: 1rem; align-items: flex-start;
+    padding: 1.2rem; background: var(--surface2); border: 1px solid var(--border);
+    transition: border-color .25s, transform .25s;
+  }
+  .problem-bullet:hover { border-color: var(--accent3); transform: translateX(6px); }
+  .bullet-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: .1rem; }
+  .bullet-text { font-size: .85rem; color: var(--muted); line-height: 1.6; }
+  .bullet-text strong { color: var(--text); }
+
+  /* DASHBOARDS */
+  #dashboards { background: var(--bg); }
+  .dashboard-block { margin-bottom: 4rem; }
+  .dashboard-header {
+    display: flex; align-items: center; gap: 1.5rem;
+    padding: 1.5rem 2rem; background: var(--surface);
+    border: 1px solid var(--border); margin-bottom: 1.5rem;
+  }
+  .dashboard-num {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: 2rem; color: var(--accent); min-width: 3rem;
+  }
+  .dashboard-name {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; color: var(--text);
+  }
+  .dashboard-tag { font-size: .65rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted); margin-top: .2rem; }
+  .dashboard-screenshot {
+    width: 100%; border: 1px solid var(--border);
+    display: block; margin-bottom: 1.5rem;
+  }
+  .dashboard-contains {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;
+  }
+  .contains-item {
+    padding: 1rem 1.2rem; background: var(--surface);
+    border: 1px solid var(--border); font-size: .78rem;
+    color: var(--muted); line-height: 1.5;
+  }
+  .contains-item strong { color: var(--accent2); display: block; margin-bottom: .3rem; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
+
+  /* LOD */
+  #lod { background: var(--surface); }
+  .lod-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-top: 3rem; }
+  .lod-card {
+    padding: 2rem; background: var(--bg); border: 1px solid var(--border);
+    transition: border-color .25s; position: relative; overflow: hidden;
+  }
+  .lod-card:hover { border-color: var(--accent2); }
+  .lod-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent2); transform: scaleX(0); transform-origin: left; transition: transform .3s;
+  }
+  .lod-card:hover::before { transform: scaleX(1); }
+  .lod-name {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: .85rem;
+    color: var(--accent2); margin-bottom: .8rem;
+  }
+  .lod-formula {
+    font-size: .75rem; color: var(--accent); background: var(--surface);
+    padding: .8rem 1rem; border-left: 2px solid var(--accent);
+    margin-bottom: .8rem; font-family: 'Space Mono', monospace;
+  }
+  .lod-desc { font-size: .78rem; color: var(--muted); line-height: 1.6; }
+
+  /* FINDINGS */
+  #findings { background: var(--bg); }
+  .findings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-top: 3rem; }
+  .finding-card {
+    padding: 2rem; background: var(--surface); border: 1px solid var(--border);
+    position: relative; overflow: hidden; transition: transform .25s;
+  }
+  .finding-card:hover { transform: translateY(-4px); }
+  .finding-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  }
+  .finding-card:nth-child(1)::before { background: var(--accent); }
+  .finding-card:nth-child(2)::before { background: var(--accent2); }
+  .finding-card:nth-child(3)::before { background: var(--accent3); }
+  .finding-card:nth-child(4)::before { background: var(--yellow); }
+  .finding-num {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: 2.5rem; margin-bottom: .5rem;
+  }
+  .finding-card:nth-child(1) .finding-num { color: var(--accent); }
+  .finding-card:nth-child(2) .finding-num { color: var(--accent2); }
+  .finding-card:nth-child(3) .finding-num { color: var(--accent3); }
+  .finding-card:nth-child(4) .finding-num { color: var(--yellow); }
+  .finding-title {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: .9rem;
+    color: var(--text); margin-bottom: .6rem;
+  }
+  .finding-desc { font-size: .8rem; color: var(--muted); line-height: 1.7; }
+
+  /* REPO */
+  #repo { background: var(--surface); }
+  .repo-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; margin-top: 3rem; align-items: start; }
+  .tree {
+    font-size: .78rem; line-height: 1.9; background: var(--bg);
+    border: 1px solid var(--border); padding: 1.5rem 2rem; position: relative;
+  }
+  .tree::before {
+    content: 'repository structure'; position: absolute; top: -1px; left: 1.5rem;
+    font-size: .6rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--accent2); background: var(--bg); padding: 0 .5rem; transform: translateY(-50%);
+  }
+  .tree-dir { color: var(--accent); }
+  .tree-file { color: var(--muted); }
+  .how-to { display: flex; flex-direction: column; gap: 1rem; }
+  .how-step {
+    display: flex; gap: 1.2rem; align-items: flex-start;
+    padding: 1.2rem; background: var(--bg); border: 1px solid var(--border);
+    transition: border-color .2s;
+  }
+  .how-step:hover { border-color: var(--accent); }
+  .how-n { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; color: var(--accent); min-width: 2rem; }
+  .how-text { font-size: .8rem; color: var(--muted); line-height: 1.6; }
+
+  footer {
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 2.5rem 3rem; display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-left { font-size: .75rem; color: var(--muted); }
+  .footer-left strong { color: var(--text); }
+  .footer-right { display: flex; gap: 1.5rem; }
+  .footer-link {
+    font-size: .7rem; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--muted); text-decoration: none; transition: color .2s;
+  }
+  .footer-link:hover { color: var(--accent); }
+
+  .reveal { opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .reveal-delay-1 { transition-delay: .1s; }
+  .reveal-delay-2 { transition-delay: .2s; }
+
+  @media (max-width: 900px) {
+    .hero-grid, .problem-body, .lod-grid, .findings-grid, .repo-layout, .dashboard-contains { grid-template-columns: 1fr; }
+    nav { padding: 1rem 1.5rem; }
+    .nav-links { display: none; }
+    .section-wrap { padding: 4rem 1.5rem; }
+    #hero { padding: 6rem 1.5rem 3rem; }
+  }
+</style>
+</head>
+<body>
+<div class="cursor" id="cursor"></div>
+
+<nav>
+  <a href="index.html" class="nav-logo">PY</a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="#problem">Problem</a>
+    <a href="#dashboards">Dashboards</a>
+    <a href="#lod">LOD</a>
+    <a href="#findings">Findings</a>
+    <a href="#repo">Repo</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg-circle"></div>
+  <div class="hero-grid">
+    <div>
+      <div class="hero-eyebrow">Project 02 · BI &amp; Visualisation</div>
+      <h1 class="hero-title">Superstore<br><em>Sales</em><br>Dashboard</h1>
+      <p class="hero-subtitle">A two-dashboard Tableau workbook revealing what's working, what isn't, and where a retail manager should focus — built with LOD expressions, dashboard actions and advanced analytics.</p>
+      <div class="tag-row">
+        <span class="tag">Tableau Desktop</span>
+        <span class="tag">LOD Expressions</span>
+        <span class="tag">Dashboard Actions</span>
+        <span class="tag">Superstore Dataset</span>
+        <span class="tag">Table Calculations</span>
+      </div>
+      <div class="hero-cta">
+        <a href="#findings" class="btn-primary">View Findings ↓</a>
+        <a href="https://github.com/ypranesh/tableau-superstore-sales-analytics" target="_blank" class="btn-ghost">GitHub Repo</a>
+      </div>
+    </div>
+    <div class="hero-stats reveal">
+      <div class="stat-grid">
+        <div class="stat-item active">
+          <div class="stat-num">9,994</div>
+          <div class="stat-label">Total Orders</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">$2.3M</div>
+          <div class="stat-label">Total Sales</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">$286K</div>
+          <div class="stat-label">Total Profit</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">3</div>
+          <div class="stat-label">Categories</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">7</div>
+          <div class="stat-label">Sheets Built</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">4</div>
+          <div class="stat-label">LOD Expressions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="section-wrap">
+    <div class="section-label">01 · Business Problem</div>
+    <h2 class="section-title">The Question That<br>Prompted This Analysis</h2>
+    <div class="problem-body">
+      <div class="reveal">
+        <blockquote class="problem-quote">
+          "What's working, what <strong>isn't</strong>, and where should I <strong>focus</strong>?"
+          <br><br><small style="font-size:.85rem; color:var(--muted); font-style:normal;">— Retail Manager, US Superstore</small>
+        </blockquote>
+        <p style="margin-top:1.5rem; font-size:.85rem; color:var(--muted); line-height:1.7;">Without a centralised view, performance monitoring was scattered across spreadsheets, regional reports and product lists — making it impossible to spot trends, compare segments or identify which products were actually profitable.</p>
+      </div>
+      <div class="problem-bullets reveal reveal-delay-2">
+        <div class="problem-bullet">
+          <div class="bullet-icon">📊</div>
+          <div class="bullet-text"><strong>No single source of truth.</strong> Revenue, profit, region and segment data lived in separate reports with no way to cross-reference.</div>
+        </div>
+        <div class="problem-bullet">
+          <div class="bullet-icon">💸</div>
+          <div class="bullet-text"><strong>Discount policy blind spot.</strong> No visibility into whether discounting was driving volume at the cost of margin — or destroying it entirely.</div>
+        </div>
+        <div class="problem-bullet">
+          <div class="bullet-icon">🔄</div>
+          <div class="bullet-text"><strong>No retention visibility.</strong> Unknown what proportion of revenue came from first-time vs returning customers — and whether that ratio was improving.</div>
+        </div>
+        <div class="problem-bullet">
+          <div class="bullet-icon">🗺️</div>
+          <div class="bullet-text"><strong>Geographic blind spots.</strong> Regional managers had no quick way to compare state-level profitability and identify where margins were being eroded.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARDS -->
+<section id="dashboards">
+  <div class="section-wrap">
+    <div class="section-label">02 · Dashboards</div>
+    <h2 class="section-title reveal">Two Dashboards,<br>One Complete Picture</h2>
+
+    <div class="dashboard-block reveal">
+      <div class="dashboard-header">
+        <div class="dashboard-num">01</div>
+        <div>
+          <div class="dashboard-name">Sales Performance Overview</div>
+          <div class="dashboard-tag">Executive view · Global filters · Cross-dashboard actions</div>
+        </div>
+      </div>
+      <img src="screenshots/dashboard1_overview.png" alt="Dashboard 1 — Sales Performance Overview" class="dashboard-screenshot">
+      <div class="dashboard-contains">
+        <div class="contains-item"><strong>Revenue &amp; Profit Trend</strong>Dual axis line chart showing monthly Sales vs Profit with reference line at average — immediately reveals if profit is tracking revenue.</div>
+        <div class="contains-item"><strong>Sales &amp; Profit by Sub-Category</strong>Side by side bars with profit coloured red/green by margin — instantly shows which products look good on revenue but lose money.</div>
+        <div class="contains-item"><strong>Regional Performance Map</strong>US states filled by Profit Ratio (not raw Sales) — shows where the business is genuinely healthy vs where margin is being destroyed.</div>
+        <div class="contains-item"><strong>Customer Segment Analysis</strong>Stacked bars of Sales and Profit by Segment and Category — reveals which customer types are most valuable by product area.</div>
+      </div>
+    </div>
+
+    <div class="dashboard-block reveal">
+      <div class="dashboard-header">
+        <div class="dashboard-num">02</div>
+        <div>
+          <div class="dashboard-name">Advanced Customer &amp; Discount Analytics</div>
+          <div class="dashboard-tag">LOD expressions · Table calculations · Trend lines</div>
+        </div>
+      </div>
+      <img src="screenshots/dashboard2_advanced.png" alt="Dashboard 2 — Advanced Analytics" class="dashboard-screenshot">
+      <div class="dashboard-contains">
+        <div class="contains-item"><strong>New vs Repeat Revenue</strong>Area chart by quarter showing revenue split between first-time and returning customers — built with FIXED LOD on Customer First Order Date.</div>
+        <div class="contains-item"><strong>Customer Purchase Frequency</strong>Bar chart showing how many customers bought once, twice, three or four+ times — built with FIXED LOD on Customer ID.</div>
+        <div class="contains-item"><strong>Discount Impact on Profit</strong>Scatter plot of every Sub-Category's avg discount rate vs profit ratio — with linear trend line proving the correlation.</div>
+        <div class="contains-item"><strong>Interactive Filter Actions</strong>Click any state on the map to filter all charts. Click a frequency bar to highlight discount behaviour. Navigation between dashboards.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOD EXPRESSIONS -->
+<section id="lod">
+  <div class="section-wrap">
+    <div class="section-label">03 · LOD Expressions</div>
+    <h2 class="section-title reveal">Four FIXED LOD<br>Expressions Used</h2>
+    <div class="lod-grid">
+      <div class="lod-card reveal">
+        <div class="lod-name">Orders Per Customer</div>
+        <div class="lod-formula">{ FIXED [Customer ID] : COUNTD([Order ID]) }</div>
+        <div class="lod-desc">Calculates order count per customer independent of whatever dimensions are in the view. Powers the purchase frequency distribution chart.</div>
+      </div>
+      <div class="lod-card reveal reveal-delay-1">
+        <div class="lod-name">Customer First Order Date</div>
+        <div class="lod-formula">{ FIXED [Customer ID] : MIN([Order Date]) }</div>
+        <div class="lod-desc">Tags every single order row with that customer's first ever purchase date — enabling the New vs Repeat Revenue split by quarter.</div>
+      </div>
+      <div class="lod-card reveal">
+        <div class="lod-name">Avg Discount by Sub-Category</div>
+        <div class="lod-formula">{ FIXED [Sub-Category] : AVG([Discount]) }</div>
+        <div class="lod-desc">Pins average discount at Sub-Category level regardless of other view dimensions — ensures scatter plot accuracy without distortion.</div>
+      </div>
+      <div class="lod-card reveal reveal-delay-1">
+        <div class="lod-name">Discount Band</div>
+        <div class="lod-formula">{ FIXED [Order ID] : MAX([Discount]) }</div>
+        <div class="lod-desc">Evaluates discount at Order ID level to avoid row-level distortion from dimension context. Used to bucket orders into No / Low / Medium / High discount bands.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINDINGS -->
+<section id="findings">
+  <div class="section-wrap">
+    <div class="section-label">04 · Key Findings</div>
+    <h2 class="section-title reveal">Four Business<br>Insights Uncovered</h2>
+    <div class="findings-grid">
+      <div class="finding-card reveal">
+        <div class="finding-num">-$18K</div>
+        <div class="finding-title">Tables are deeply loss-making despite high sales</div>
+        <div class="finding-desc">Tables rank among the top sub-categories by revenue but show a consistently negative profit ratio. The culprit is aggressive discounting — the scatter plot shows Tables sitting in the bottom-right quadrant: high discount, deeply negative margin.</div>
+      </div>
+      <div class="finding-card reveal reveal-delay-1">
+        <div class="finding-num">Texas</div>
+        <div class="finding-title">Strong sales states can hide poor profitability</div>
+        <div class="finding-desc">Texas and Illinois generate high sales volumes but show negative profit ratios on the map — driven by excessive regional discounting. The map using Profit Ratio instead of raw Sales makes this immediately visible in a way a standard map never would.</div>
+      </div>
+      <div class="finding-card reveal">
+        <div class="finding-num">~1 in 3</div>
+        <div class="finding-title">Most customers only ever buy once</div>
+        <div class="finding-desc">The frequency distribution shows the vast majority of customers in the "1 Order" bucket. The New vs Repeat chart confirms revenue is almost entirely acquisition-dependent with minimal repeat purchase behaviour — a structural retention problem.</div>
+      </div>
+      <div class="finding-card reveal reveal-delay-1">
+        <div class="finding-num">41%+</div>
+        <div class="finding-title">High discounts systematically destroy margin</div>
+        <div class="finding-desc">Sub-categories receiving discounts above 40% are uniformly loss-making. The trend line on the scatter plot confirms the linear relationship between discount rate and profit ratio destruction — every 10pp increase in discount corresponds to a measurable margin decline.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REPO -->
+<section id="repo">
+  <div class="section-wrap">
+    <div class="section-label">05 · Repository</div>
+    <h2 class="section-title reveal">Structure &amp; How to Open</h2>
+    <div class="repo-layout">
+      <div class="tree reveal">
+<pre><span class="tree-dir">tableau-superstore-sales-analytics/
+│
+├── README.md
+├── superstore_dashboard.twbx
+│
+└── screenshots/
+    ├── dashboard1_overview.png
+    └── dashboard2_advanced.png</span></pre>
+      </div>
+      <div class="how-to reveal reveal-delay-2">
+        <div class="how-step">
+          <div class="how-n">1</div>
+          <div class="how-text">Download the <strong>Superstore dataset</strong> from Kaggle: "Superstore Sales Dataset" by Vivek468. Single CSV file.</div>
+        </div>
+        <div class="how-step">
+          <div class="how-n">2</div>
+          <div class="how-text">Install <strong>Tableau Desktop</strong> or <strong>Tableau Public Desktop</strong> (free). Open <code style="background:var(--surface2);padding:.1rem .4rem;font-size:.75rem;color:var(--accent2)">superstore_dashboard.twbx</code> — dataset is bundled inside.</div>
+        </div>
+        <div class="how-step">
+          <div class="how-n">3</div>
+          <div class="how-text">Navigate between <strong>Dashboard 1</strong> and <strong>Dashboard 2</strong> using the navigation buttons at the bottom right of each dashboard.</div>
+        </div>
+        <div class="how-step">
+          <div class="how-n">4</div>
+          <div class="how-text">Use the <strong>Year, Region and Segment filters</strong> on Dashboard 1 — they apply to all four sheets simultaneously. Click a state on the map to filter everything.</div>
+        </div>
+        <div class="how-step">
+          <div class="how-n">✓</div>
+          <div class="how-text">Tested on <strong>Tableau Desktop 2019+</strong>. Live interactive version coming to Tableau Public shortly.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-left">
+    <strong>Superstore Sales Performance Dashboard</strong><br>
+    BI &amp; Visualisation · Tableau · LOD · Project 02
+  </div>
+  <div class="footer-right">
+    <a href="index.html" class="footer-link">Portfolio</a>
+    <a href="https://linkedin.com/in/pranesh-yuvaraj" target="_blank" class="footer-link">LinkedIn</a>
+    <a href="https://github.com/ypranesh/tableau-superstore-sales-analytics" target="_blank" class="footer-link">GitHub</a>
+  </div>
+</footer>
+
+<script>
+  const cursor = document.getElementById('cursor');
+  document.addEventListener('mousemove', e => {
+    cursor.style.left = e.clientX + 'px';
+    cursor.style.top = e.clientY + 'px';
+  });
+  document.querySelectorAll('a, button, .lod-card, .finding-card, .problem-bullet').forEach(el => {
+    el.addEventListener('mouseenter', () => cursor.classList.add('expand'));
+    el.addEventListener('mouseleave', () => cursor.classList.remove('expand'));
+  });
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
